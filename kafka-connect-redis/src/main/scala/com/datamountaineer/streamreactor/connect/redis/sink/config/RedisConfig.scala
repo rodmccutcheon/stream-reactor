@@ -50,6 +50,7 @@ object RedisConfig {
     .define(RedisConfigConstants.REDIS_PK_DELIMITER, Type.STRING,
       RedisConfigConstants.REDIS_PK_DELIMITER_DEFAULT_VALUE,
       Importance.LOW, RedisConfigConstants.REDIS_PK_DELIMITER_DOC)
+    .define(RedisConfigConstants.REDIS_ALLOW_DELETES, Type.BOOLEAN, false, Importance.MEDIUM, RedisConfigConstants.DELETE_DOC)
     .withClientSslSupport()
 }
 

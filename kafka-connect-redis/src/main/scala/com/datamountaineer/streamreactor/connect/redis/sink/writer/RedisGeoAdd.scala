@@ -41,40 +41,49 @@ class RedisGeoAdd(sinkSettings: RedisSinkSettings) extends RedisWriter with GeoA
         //pass try to error handler and try
         val t = Try {
           sinkRecords.foreach { record =>
-            topicSettings.map { KCQL =>
+            // if payload is empty delete
+            Option(record.key()) match {
+              case None =>
+                if (sinkSettings.allowDelete && record.keySchema().`type`().isPrimitive) {
+                  jedis.del(record.key().toString)
+                } else {
+                  logger.warn("Record with null value received but ky schema is not primitive. Can't determine redis key, discarding")
+                }
+              case _ =>
+                topicSettings.map { KCQL =>
+                  val extractor = StructFieldsExtractor(includeAllFields = false, KCQL.kcqlConfig.getPrimaryKeys.map(f => f.getName -> f.getName).toMap)
+                  val fieldsAndValues = extractor.get(record.value.asInstanceOf[Struct]).toMap
+                  val pkValue = KCQL.kcqlConfig.getPrimaryKeys.map(pk => fieldsAndValues(pk.getName).toString).mkString(":")
 
-              val extractor = StructFieldsExtractor(includeAllFields = false, KCQL.kcqlConfig.getPrimaryKeys.map(f => f.getName -> f.getName).toMap)
-              val fieldsAndValues = extractor.get(record.value.asInstanceOf[Struct]).toMap
-              val pkValue = KCQL.kcqlConfig.getPrimaryKeys.map(pk => fieldsAndValues(pk.getName).toString).mkString(":")
+                  // Use the target (and optionally the prefix) to name the GeoAdd key
+                  val optionalPrefix = if (Option(KCQL.kcqlConfig.getTarget).isEmpty) "" else KCQL.kcqlConfig.getTarget.trim
+                  val key = optionalPrefix + pkValue
 
-              // Use the target (and optionally the prefix) to name the GeoAdd key
-              val optionalPrefix = if (Option(KCQL.kcqlConfig.getTarget).isEmpty) "" else KCQL.kcqlConfig.getTarget.trim
-              val key = optionalPrefix + pkValue
+                  val recordToSink = convert(record, fields = KCQL.fieldsAndAliases, ignoreFields = KCQL.ignoredFields)
+                  val payload = convertValueToJson(recordToSink)
 
-              val recordToSink = convert(record, fields = KCQL.fieldsAndAliases, ignoreFields = KCQL.ignoredFields)
-              val payload = convertValueToJson(recordToSink)
+                  val longitudeField = getLongitudeField(KCQL.kcqlConfig)
+                  val latitudeField = getLatitudeField(KCQL.kcqlConfig)
+                  val longitude = getFieldValue(record, longitudeField)
+                  val latitude = getFieldValue(record, latitudeField)
 
-              val longitudeField = getLongitudeField(KCQL.kcqlConfig)
-              val latitudeField = getLatitudeField(KCQL.kcqlConfig)
-              val longitude = getFieldValue(record, longitudeField)
-              val latitude = getFieldValue(record, latitudeField)
+                  if (isDoubleNumber(longitude) && isDoubleNumber(latitude)) {
 
-              if (isDoubleNumber(longitude) && isDoubleNumber(latitude)) {
+                    logger.debug(s"GEOADD $key longitude=$longitude latitude=$latitude payload = ${payload.toString}")
+                    val response = jedis.geoadd(key, longitude.toDouble, latitude.toDouble, payload.toString)
 
-                logger.debug(s"GEOADD $key longitude=$longitude latitude=$latitude payload = ${payload.toString}")
-                val response = jedis.geoadd(key, longitude.toDouble, latitude.toDouble, payload.toString)
-
-                if (response == 1) {
-                  logger.debug("New element added")
-                } else if (response == 0)
-                  logger.debug("The element was already a member of the sorted set and the score was updated")
-                response
-              }
-              else {
-                logger.warn(s"GeoAdd record contains invalid longitude=$longitude and latitude=$latitude values, " +
-                  s"Record with key ${record.key} is skipped");
-                None
-              }
+                    if (response == 1) {
+                      logger.debug("New element added")
+                    } else if (response == 0)
+                      logger.debug("The element was already a member of the sorted set and the score was updated")
+                    response
+                  }
+                  else {
+                    logger.warn(s"GeoAdd record contains invalid longitude=$longitude and latitude=$latitude values, " +
+                      s"Record with key ${record.key} is skipped");
+                    None
+                  }
+                }
             }
           }
         }

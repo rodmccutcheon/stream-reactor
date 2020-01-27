@@ -67,8 +67,14 @@ class RedisCache(sinkSettings: RedisSinkSettings) extends RedisWriter {
         val t = Try(
           {
             sinkRecords.foreach { record =>
+              // if payload is empty delete
               Option(record.key()) match {
-                case None => if (record.keySchema().`type`().isPrimitive) jedis.del(record.key().toString)
+                case None =>
+                  if (sinkSettings.allowDelete && record.keySchema().`type`().isPrimitive) {
+                    jedis.del(record.key().toString)
+                  } else {
+                    logger.warn("Record with null value received but ky schema is not primitive. Can't determine redis key, discarding")
+                  }
                 case _ =>
                   topicSettings.map { KCQL =>
                     // We can prefix the name of the <KEY> using the target

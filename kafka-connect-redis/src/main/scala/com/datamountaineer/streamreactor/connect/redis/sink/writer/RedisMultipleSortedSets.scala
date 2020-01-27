@@ -75,26 +75,29 @@ class RedisMultipleSortedSets(sinkSettings: RedisSinkSettings) extends RedisWrit
               // Use the target (and optionally the prefix) to name the SortedSet
               val optionalPrefix = if (Option(KCQL.kcqlConfig.getTarget).isEmpty) "" else KCQL.kcqlConfig.getTarget.trim
               val sortedSetName = optionalPrefix + pkValue
+              // if payload is empty delete
+              Option(record.value()) match {
+                case None => if (sinkSettings.allowDelete) jedis.zrem(sortedSetName)
+                case _    =>
+                  // Include the score into the payload
+                  val scoreField = getScoreField(KCQL.kcqlConfig)
+                  val recordToSink = convert(record, fields = KCQL.fieldsAndAliases + (scoreField -> scoreField), ignoreFields = KCQL.ignoredFields)
+                  val payload = convertValueToJson(recordToSink)
+                  val score = StringStructFieldsStringKeyBuilder(Seq(scoreField)).build(record).toDouble
 
-              // Include the score into the payload
-              val scoreField = getScoreField(KCQL.kcqlConfig)
-              val recordToSink = convert(record, fields = KCQL.fieldsAndAliases + (scoreField -> scoreField), ignoreFields = KCQL.ignoredFields)
-              val payload = convertValueToJson(recordToSink)
+                  logger.debug(s"ZADD $sortedSetName    score = $score     payload = ${payload.toString}")
+                  val response = jedis.zadd(sortedSetName, score, payload.toString)
 
-              val score = StringStructFieldsStringKeyBuilder(Seq(scoreField)).build(record).toDouble
-
-              logger.debug(s"ZADD $sortedSetName    score = $score     payload = ${payload.toString}")
-              val response = jedis.zadd(sortedSetName, score, payload.toString)
-
-              if (response == 1) {
-                logger.debug("New element added")
-                val ttl = KCQL.kcqlConfig.getTTL
-                if (ttl > 0) {
-                  jedis.expire(sortedSetName, ttl.toInt)
-                }
-              } else if (response == 0)
-                logger.debug("The element was already a member of the sorted set and the score was updated")
-              response
+                  if (response == 1) {
+                    logger.debug("New element added")
+                    val ttl = KCQL.kcqlConfig.getTTL
+                    if (ttl > 0) {
+                      jedis.expire(sortedSetName, ttl.toInt)
+                    }
+                  } else if (response == 0)
+                    logger.debug("The element was already a member of the sorted set and the score was updated")
+                  response
+              }
             }
           }
         }

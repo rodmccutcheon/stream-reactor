@@ -76,23 +76,28 @@ class RedisInsertSortedSet(sinkSettings: RedisSinkSettings) extends RedisWriter 
               val recordToSink = convert(record, fields = KCQL.fieldsAndAliases, ignoreFields = KCQL.ignoredFields)
               // Use the target to name the SortedSet
               val sortedSetName = KCQL.kcqlConfig.getTarget
-              val payload = convertValueToJson(recordToSink)
+              // if payload is empty delete
+              Option(record.value()) match {
+                case None => if (sinkSettings.allowDelete) jedis.zrem(sortedSetName)
+                case _    =>
+                  val payload = convertValueToJson(recordToSink)
 
-              val scoreField = getScoreField(KCQL.kcqlConfig)
-              val score = StringStructFieldsStringKeyBuilder(Seq(scoreField)).build(record).toDouble
+                  val scoreField = getScoreField(KCQL.kcqlConfig)
+                  val score = StringStructFieldsStringKeyBuilder(Seq(scoreField)).build(record).toDouble
 
-              logger.debug(s"ZADD $sortedSetName    score = $score     payload = ${payload.toString}")
-              val response = jedis.zadd(sortedSetName, score, payload.toString)
+                  logger.debug(s"ZADD $sortedSetName    score = $score     payload = ${payload.toString}")
+                  val response = jedis.zadd(sortedSetName, score, payload.toString)
 
-              if (response == 1) {
-                logger.debug("New element added")
-                val ttl = KCQL.kcqlConfig.getTTL
-                if (ttl > 0) {
-                  jedis.expire(sortedSetName, ttl.toInt)
-                }
-              } else if (response == 0)
-                logger.debug("The element was already a member of the sorted set and the score was updated")
-              response
+                  if (response == 1) {
+                    logger.debug("New element added")
+                    val ttl = KCQL.kcqlConfig.getTTL
+                    if (ttl > 0) {
+                      jedis.expire(sortedSetName, ttl.toInt)
+                    }
+                  } else if (response == 0)
+                    logger.debug("The element was already a member of the sorted set and the score was updated")
+                  response
+              }
             }
           }
         }

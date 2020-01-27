@@ -79,4 +79,7 @@ object RedisConfigConstants {
       |Specifies the redis primary key delimiter
     """.stripMargin
   val REDIS_PK_DELIMITER_DEFAULT_VALUE = "."
+
+  val REDIS_ALLOW_DELETES = s"${CONNECTOR_PREFIX}.allow.deletes"
+  private[config] val DELETE_DOC = "Allow deletes from Redis if vaule of a message is null based on key. Key must be primitive type"
 }

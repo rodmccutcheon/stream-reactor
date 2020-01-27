@@ -50,7 +50,9 @@ case class RedisSinkSettings(connectionInfo: RedisConnectionInfo,
                              pkDelimiter: String,
                              kcqlSettings: Set[RedisKCQLSetting],
                              errorPolicy: ErrorPolicy = new ThrowErrorPolicy,
-                             taskRetries: Int = RedisConfigConstants.NBR_OF_RETIRES_DEFAULT)
+                             taskRetries: Int = RedisConfigConstants.NBR_OF_RETIRES_DEFAULT,
+                             allowDelete: Boolean = false
+                            )
 
 object RedisSinkSettings {
 
@@ -88,7 +90,8 @@ object RedisSinkSettings {
       )
     }.toSet
 
-    RedisSinkSettings(connectionInfo, pkDelimiter, allRedisKCQLSettings, errorPolicy, nbrOfRetries)
+    val allowDelete = config.getBoolean(RedisConfigConstants.REDIS_ALLOW_DELETES)
+    RedisSinkSettings(connectionInfo, pkDelimiter, allRedisKCQLSettings, errorPolicy, nbrOfRetries, allowDelete = allowDelete)
   }
 
 }
