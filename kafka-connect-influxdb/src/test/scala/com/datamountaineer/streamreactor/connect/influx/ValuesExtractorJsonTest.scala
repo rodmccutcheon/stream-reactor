@@ -21,14 +21,16 @@ import com.datamountaineer.streamreactor.connect.influx.data.{Foo, FooInner}
 import com.datamountaineer.streamreactor.connect.influx.writers.ValuesExtractor
 import com.landoop.json.sql.JacksonJson
 import com.sksamuel.avro4s.RecordFormat
+import com.typesafe.scalalogging.LazyLogging
 import io.confluent.connect.avro.AvroData
+import org.apache.avro.generic.GenericData
 import org.apache.kafka.connect.data.{Schema, SchemaBuilder, Struct}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util.{Success, Try}
 
-class ValuesExtractorJsonTest extends AnyWordSpec with Matchers {
+class ValuesExtractorJsonTest extends AnyWordSpec with Matchers with LazyLogging {
   val avroData = new AvroData(8)
 
   "ValuesExtractor" should {
@@ -233,10 +235,19 @@ class ValuesExtractorJsonTest extends AnyWordSpec with Matchers {
         .put("bibble", Array(1.toByte, 121.toByte, -111.toByte))
         .put("age", 30)
 
-      val json = JacksonJson.asJson(avroData.fromConnectData(schema, struct).toString)
-      val result = Try(ValuesExtractor.extract(json, Vector("bibble")), Vector("bibble"))
-      result shouldBe 'Failure
-      result.failed.get shouldBe a[IllegalArgumentException]
+      avroData.fromConnectData(schema, struct) match {
+        case _: GenericData.Record =>
+          // TODO: avroData.fromConnectData has changed the format that it serialises to
+          // Therefore the string below is hard-coded for the time being
+          //val json = avroData.toString
+          val json = JacksonJson.asJson("{\"bibble\": {\"bytes\": \"\\u0001y\\u0091\"}}")
+          val result = Try(ValuesExtractor.extract(json, Vector("bibble")), Vector("bibble"))
+          result shouldBe 'Failure
+          result.failed.get shouldBe a[IllegalArgumentException]
+
+        case _ => fail("Should have been a GenericData.Record");
+      }
+
     }
   }
 }

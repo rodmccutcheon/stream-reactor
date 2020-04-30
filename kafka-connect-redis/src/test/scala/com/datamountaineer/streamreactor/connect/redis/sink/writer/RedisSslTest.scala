@@ -16,15 +16,14 @@
 
 package com.datamountaineer.streamreactor.connect.redis.sink.writer
 
+import java.net.URI
+
 import com.datamountaineer.streamreactor.connect.redis.sink.config.{RedisConfig, RedisConfigConstants, RedisSinkSettings}
 import com.google.gson.Gson
+import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.connect.data.{Schema, SchemaBuilder, Struct}
 import org.apache.kafka.connect.sink.SinkRecord
 import org.mockito.MockitoSugar
-import java.io.File
-import java.net.URI
-
-import org.apache.kafka.common.config.SslConfigs
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -100,7 +99,9 @@ class RedisSslTest extends AnyWordSpec with Matchers with BeforeAndAfterAll with
       val config =  RedisConfig(map.asJava)
       val settings = RedisSinkSettings(config)
 
+
       val writer = new RedisCache(settings)
+      writer.createClient(settings)
 
       val props = System.getProperties
       props.containsKey("javax.net.ssl.keyStorePassword") shouldBe true

@@ -4,19 +4,14 @@ import java.util
 
 import cats.data.NonEmptyList
 import com.landoop.streamreactor.connect.hive._
-import com.landoop.streamreactor.connect.hive.sink.config.HiveSinkConfig
-import com.landoop.streamreactor.connect.hive.sink.config.TableOptions
 import com.landoop.streamreactor.connect.hive.sink.HiveSink
-import com.landoop.streamreactor.connect.hive.source.config.HiveSourceConfig
-import com.landoop.streamreactor.connect.hive.source.config.ProjectionField
-import com.landoop.streamreactor.connect.hive.source.config.SourceTableOptions
-import com.landoop.streamreactor.connect.hive.source.offset.HiveSourceOffsetStorageReader
-import com.landoop.streamreactor.connect.hive.source.offset.MockOffsetStorageReader
+import com.landoop.streamreactor.connect.hive.sink.config.{HiveSinkConfig, TableOptions}
+import com.landoop.streamreactor.connect.hive.source.config.{HiveSourceConfig, ProjectionField, SourceTableOptions}
+import com.landoop.streamreactor.connect.hive.source.offset.{HiveSourceOffsetStorageReader, MockOffsetStorageReader}
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.hive.metastore.api.Database
-import org.apache.kafka.connect.data.SchemaBuilder
-import org.apache.kafka.connect.data.Struct
+import org.apache.kafka.connect.data.{SchemaBuilder, Struct}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -82,7 +77,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.toList.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues) shouldBe
         List(Vector("sam", "mr", 100.43), Vector("laura", "ms", 429.06), Vector("stef", "ms", 329.06), Vector("andrew", "mr", 529.06), Vector("ant", "mr", 629.06), Vector("tom", "miss", 395.44))
@@ -96,7 +92,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), projection = Some(NonEmptyList.of(ProjectionField("title", "title"), ProjectionField("name", "name"))))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       val records = source.toList
       records.head.valueSchema.fields().asScala.map(_.name) shouldBe Seq("title", "name")
@@ -112,7 +109,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), projection = Some(NonEmptyList.of(ProjectionField("title", "salutation"), ProjectionField("name", "name"))))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       val records = source.toList
       records.head.valueSchema.fields().asScala.map(_.name) shouldBe Seq("salutation", "name")
@@ -128,7 +126,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues).toSet shouldBe
         Set(Vector("tom", 395.44, "miss"), Vector("sam", 100.43, "mr"), Vector("andrew", 529.06, "mr"), Vector("ant", 629.06, "mr"), Vector("laura", 429.06, "ms"), Vector("stef", 329.06, "ms"))
@@ -142,7 +141,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), projection = Some(NonEmptyList.of(ProjectionField("title", "title"), ProjectionField("name", "name"))))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues).toSet shouldBe
         Set(Vector("mr", "ant"), Vector("miss", "tom"), Vector("ms", "stef"), Vector("ms", "laura"), Vector("mr", "andrew"), Vector("mr", "sam"))
@@ -155,7 +155,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), limit = 3)
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
 
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.toList.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues) shouldBe
@@ -169,7 +170,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
       val reader = new HiveSourceOffsetStorageReader(new MockOffsetStorageReader(Map.empty))
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
 
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       val list = source.toList
@@ -201,7 +203,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
 
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"))
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.toList.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues) shouldBe
         List(Vector("stef", "ms", 329.06), Vector("andrew", "mr", 529.06), Vector("ant", "mr", 629.06), Vector("tom", "miss", 395.44))
@@ -222,7 +225,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
 
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), limit = 2)
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.toList.map(_.value.asInstanceOf[Struct]).map(StructUtils.extractValues) shouldBe
         List(Vector("stef", "ms", 329.06), Vector("andrew", "mr", 529.06))
@@ -243,7 +247,8 @@ class HiveSourceTest extends AnyWordSpec with Matchers with HiveTestConfig with 
 
       val sourceConfig = HiveSourceConfig(DatabaseName(dbname), tableOptions = Set(
         SourceTableOptions(TableName(table), Topic("mytopic"), limit = 2)
-      ))
+      ), kerberos = None,
+        hadoopConfiguration = HadoopConfiguration.Empty)
       val source = new HiveSource(DatabaseName(dbname), TableName(table), Topic("mytopic"), reader, sourceConfig)
       source.toList.isEmpty shouldBe true
     }

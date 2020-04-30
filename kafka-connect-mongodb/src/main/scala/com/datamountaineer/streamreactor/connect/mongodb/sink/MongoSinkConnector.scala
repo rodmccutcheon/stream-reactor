@@ -22,12 +22,11 @@ import com.datamountaineer.streamreactor.connect.config.Helpers
 import com.datamountaineer.streamreactor.connect.mongodb.config.{MongoConfig, MongoConfigConstants}
 import com.datamountaineer.streamreactor.connect.utils.JarManifest
 import com.typesafe.scalalogging.StrictLogging
-import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.{Config, ConfigDef}
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.errors.ConnectException
 import org.apache.kafka.connect.sink.SinkConnector
 
-import scala.collection.JavaConverters._
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Try}
 
@@ -78,4 +77,6 @@ class MongoSinkConnector extends SinkConnector with StrictLogging {
   override def version(): String = manifest.version()
 
   override def config(): ConfigDef = MongoConfig.config
+
+  override def validate(connectorConfigs: util.Map[String, String]): Config = super.validate(connectorConfigs)
 }

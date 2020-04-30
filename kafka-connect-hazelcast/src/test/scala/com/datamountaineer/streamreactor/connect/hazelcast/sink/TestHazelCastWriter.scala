@@ -16,8 +16,6 @@
 
 package com.datamountaineer.streamreactor.connect.hazelcast.sink
 
-import java.util.concurrent.TimeUnit
-
 import com.datamountaineer.streamreactor.connect.hazelcast.config.{HazelCastConnectionConfig, HazelCastSinkConfig, HazelCastSinkConfigConstants, HazelCastSinkSettings}
 import com.datamountaineer.streamreactor.connect.hazelcast.writers.HazelCastWriter
 import com.datamountaineer.streamreactor.connect.hazelcast.{HazelCastConnection, MessageListenerImplAvro, MessageListenerImplJson, TestBase}
@@ -274,7 +272,8 @@ class TestHazelCastWriter extends TestBase {
     conConfig.trustStorePassword shouldBe Some("truststore-password")
     conConfig.keyStorePassword shouldBe Some("keystore-password")
 
-    val sslProps = HazelCastConnection.getSSLOptions(conConfig)
+    HazelCastConnection.setSSLOptions(conConfig)
+    val sslProps = System.getProperties
     sslProps.containsKey("javax.net.ssl.keyStorePassword") shouldBe true
     sslProps.get("javax.net.ssl.keyStorePassword") shouldBe "keystore-password"
     sslProps.containsKey("javax.net.ssl.keyStore") shouldBe true

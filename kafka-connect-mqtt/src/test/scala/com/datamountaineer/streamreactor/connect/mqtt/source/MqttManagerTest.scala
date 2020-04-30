@@ -22,7 +22,6 @@ import java.nio.file.Paths
 import java.util
 import java.util.UUID
 
-import com.datamountaineer.kcql.Kcql
 import com.datamountaineer.streamreactor.connect.converters.MsgKey
 import com.datamountaineer.streamreactor.connect.converters.source._
 import com.datamountaineer.streamreactor.connect.mqtt.config.{MqttConfigConstants, MqttSourceConfig, MqttSourceSettings}
@@ -170,7 +169,7 @@ class MqttManagerTest extends AnyWordSpec with Matchers with BeforeAndAfter {
     }
 
 
-    "process the messages on topic A and create source records with Bytes schema with Wildcards" ignore {
+    "process the messages on topic A and create source records with Bytes schema with Wildcards" in {
       val source = "/mqttSourceTopic/+/test"
       val target = "kafkaTopic"
       val sourcesToConvMap = Map(source -> new BytesConverter)

@@ -17,11 +17,12 @@
 package com.datamountaineer.streamreactor.connect.cassandra.source
 
 import java.text.SimpleDateFormat
-import java.time.{Instant}
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit}
 import java.util.{Collections, Date}
 
+import com.datamountaineer.kcql.FormatType
 import com.datamountaineer.streamreactor.connect.cassandra.config.{CassandraConfigConstants, CassandraSourceSetting, TimestampType}
 import com.datamountaineer.streamreactor.connect.cassandra.utils.CassandraResultSetWrapper.resultSetFutureToScala
 import com.datamountaineer.streamreactor.connect.offsets.OffsetHandler
@@ -30,15 +31,13 @@ import com.datastax.driver.core.utils.UUIDs
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.source.{SourceRecord, SourceTaskContext}
+import org.json4s.DefaultFormats
+import org.json4s.native.Json
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
-import com.datamountaineer.kcql.FormatType
-
-import org.json4s.native.Json
-import org.json4s.DefaultFormats
 
 /**
   * Created by andrew@datamountaineer.com on 20/04/16.
@@ -72,6 +71,7 @@ class CassandraTableReader(private val name: String,
   private var schema: Option[Schema] = None
   private val ignoreList = config.getIgnoredFields.asScala.map(_.getName).toSet
   private val isTokenBased = cqlGenerator.isTokenBased()
+  private val isDSESearchBased = cqlGenerator.isDSESearchBased()
   private val cassandraTypeConverter : CassandraTypeConverter =
     new CassandraTypeConverter(session.getCluster.getConfiguration.getCodecRegistry, setting)
   private var structColDefs: List[ColumnDefinitions.Definition] = _
@@ -175,9 +175,17 @@ class CassandraTableReader(private val name: String,
     // logging the CQL
     val formattedPrevious = previous.toString()
     val formattedNow = upperBound.toString()
-    logger.info(s"Connector $name query ${preparedStatement.getQueryString} executing with bindings ($formattedPrevious, $formattedNow).")
+    val bound = if (isDSESearchBased) {
+      val solrWhere = s"$primaryKeyCol:{$formattedPrevious TO $formattedNow]"
+      // we need that to be able to page results even with the solr_query being used, that's why we use the paging and sort configs
+      val solrQuery = "{\"q\": \"" + solrWhere + "\", \"sort\":\"" + primaryKeyCol + " asc\", \"paging\":\"driver\"}"
+      logger.info(s"Connector $name query ${preparedStatement.getQueryString} executing with bindings ($solrQuery).")
+      preparedStatement.bind(solrQuery)
+    } else {
+      logger.info(s"Connector $name query ${preparedStatement.getQueryString} executing with bindings ($formattedPrevious, $formattedNow).")
+      preparedStatement.bind(Date.from(previous), Date.from(upperBound))
+    }
     // bind the offset and db time
-    val bound = preparedStatement.bind(Date.from(previous), Date.from(upperBound))
     bound.setFetchSize(setting.fetchSize)
     session.executeAsync(bound)
   }
@@ -220,7 +228,7 @@ class CassandraTableReader(private val name: String,
     var maxOffset: Option[String] = None
     //on success start writing the row to the queue
     future.onComplete {
-      case rs: ResultSet =>
+      case Success(rs) =>
         try {
           logger.info(s"Connector $name processing results for $keySpace.$table.")
           val iter = rs.iterator()
@@ -255,6 +263,7 @@ class CassandraTableReader(private val name: String,
             logger.error(s"Connector $name error processing table $keySpace.$table.", t)
             reset(tableOffset)
         }
+      case Failure(e) => logger.error("Exception occurred inside future", e)
     }
 
     //On failure, reset and throw

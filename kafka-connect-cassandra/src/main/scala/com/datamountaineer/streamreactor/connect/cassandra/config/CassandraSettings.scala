@@ -24,8 +24,8 @@ import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.scalalogging.StrictLogging
 import org.apache.kafka.common.config.ConfigException
 
-import scala.util.{Success, Try}
 import scala.collection.JavaConverters._
+import scala.util.{Success, Try}
 
 /**
   * Created by andrew@datamountaineer.com on 22/04/16. 
@@ -36,7 +36,12 @@ trait CassandraSetting
 
 object TimestampType extends Enumeration {
   type TimestampType = Value
-  val TIMESTAMP, TIMEUUID, TOKEN, NONE = Value
+  val TIMESTAMP, DSESEARCHTIMESTAMP, TIMEUUID, TOKEN, NONE = Value
+}
+
+object LoadBalancingPolicy extends Enumeration {
+  type LoadBalancingPolicy = Value
+  val TOKEN_AWARE, ROUND_ROBIN, DC_AWARE_ROUND_ROBIN, LATENCY_AWARE = Value
 }
 
 case class CassandraSourceSetting(kcql: Kcql,
@@ -67,7 +72,8 @@ case class CassandraSinkSetting(keySpace: String,
                                 deleteEnabled: Boolean = CassandraConfigConstants.DELETE_ROW_ENABLED_DEFAULT,
                                 deleteStatement: String = CassandraConfigConstants.DELETE_ROW_STATEMENT_DEFAULT,
                                 deleteStructFields: Seq[String] = Seq.empty,
-                                defaultValueStrategy: Option[DefaultValueServeStrategy] = None) extends CassandraSetting
+                                defaultValueStrategy: Option[DefaultValueServeStrategy] = None
+                               ) extends CassandraSetting
 
 /**
   * Cassandra Setting used for both Readers and writers
@@ -160,7 +166,8 @@ object CassandraSettings extends StrictLogging {
       deleteEnabled,
       deleteStmt,
       structFlds.asScala,
-      defaultValueStrategy)
+      defaultValueStrategy
+    )
   }
 }
 
