@@ -19,35 +19,41 @@ package io.lenses.streamreactor.connect.aws.s3.formats
 
 import com.typesafe.scalalogging.LazyLogging
 import io.lenses.streamreactor.connect.aws.s3.formats.parquet.ParquetOutputFile
-import io.lenses.streamreactor.connect.aws.s3.model.{SinkData, Topic}
+import io.lenses.streamreactor.connect.aws.s3.model.SinkData
+import io.lenses.streamreactor.connect.aws.s3.model.Topic
 import io.lenses.streamreactor.connect.aws.s3.sink.conversion.ToAvroDataConverter
 import io.lenses.streamreactor.connect.aws.s3.storage.S3OutputStream
+import io.lenses.streamreactor.connect.aws.s3.MetricsSupport
 import org.apache.avro.Schema
 import org.apache.kafka.connect.data.{Schema => ConnectSchema}
 import org.apache.parquet.avro.AvroParquetWriter
 import org.apache.parquet.hadoop.ParquetWriter
-import org.apache.parquet.hadoop.ParquetWriter.{DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE}
+import org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE
+import org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE
 
 import scala.util.Try
 
-class ParquetFormatWriter(outputStreamFn: () => S3OutputStream) extends S3FormatWriter with LazyLogging {
+class ParquetFormatWriter(outputStreamFn: () => S3OutputStream) extends S3FormatWriter with LazyLogging with MetricsSupport {
   private var outstandingRename: Boolean = false
 
   private var outputStream: S3OutputStream = _
 
   private var writer: ParquetWriter[AnyRef] = _
 
-  override def write(keySinkData: Option[SinkData], valueSinkData: SinkData, topic: Topic): Unit = {
-    logger.debug("AvroFormatWriter - write")
-
-    val genericRecord: AnyRef = ToAvroDataConverter.convertToGenericRecord(valueSinkData)
+  override def write(keySinkData: Option[SinkData], valueSinkData: SinkData, topic: Topic): Unit = timed("Parquet Format write") {
+    val genericRecord: AnyRef = timed("Parquet Format Avro converter") {
+      ToAvroDataConverter.convertToGenericRecord(valueSinkData)
+    }
     if (writer == null) {
       writer = init(valueSinkData.schema())
     }
 
-    writer.write(genericRecord)
-    outputStream.flush()
-
+    timed("ParquetWriter write") {
+      writer.write(genericRecord)
+    }
+    timed("Parquet Format flush") {
+      outputStream.flush()
+    }
   }
 
   private def init(connectSchema: Option[ConnectSchema]): ParquetWriter[AnyRef] = {

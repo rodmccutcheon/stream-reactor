@@ -21,6 +21,7 @@ import io.lenses.streamreactor.connect.aws.s3.formats.S3FormatWriter
 import io.lenses.streamreactor.connect.aws.s3.model._
 import io.lenses.streamreactor.connect.aws.s3.sink.config.S3SinkConfig
 import io.lenses.streamreactor.connect.aws.s3.storage.{MultipartBlobStoreOutputStream, S3Writer, S3WriterImpl, StorageInterface}
+import io.lenses.streamreactor.connect.aws.s3.MetricsSupport
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.connect.errors.ConnectException
 
@@ -38,7 +39,7 @@ class S3WriterManager(formatWriterFn: (TopicPartition, Map[PartitionField, Strin
                       bucketAndPrefixFn: Topic => BucketAndPrefix,
                       fileNamingStrategyFn: Topic => S3FileNamingStrategy
                      )
-                     (implicit storageInterface: StorageInterface) {
+                     (implicit storageInterface: StorageInterface) extends MetricsSupport {
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass.getName)
 
@@ -51,7 +52,7 @@ class S3WriterManager(formatWriterFn: (TopicPartition, Map[PartitionField, Strin
     if(shouldFlush) commitAllWriters()
   }
 
-  def commitAllWriters(): Map[TopicPartition, Offset] = {
+  def commitAllWriters(): Map[TopicPartition, Offset] = timed("S3 writer manager commit all") {
 
     logger.debug("Received call to S3WriterManager.commit")
     val topicPartitions = writers.map {
@@ -64,7 +65,7 @@ class S3WriterManager(formatWriterFn: (TopicPartition, Map[PartitionField, Strin
       .toMap
   }
 
-  def commitTopicPartitionWriters(topicPartition: TopicPartition): TopicPartitionOffset = {
+  def commitTopicPartitionWriters(topicPartition: TopicPartition): TopicPartitionOffset = timed("S3 writer manager commit") {
     import Offset.orderingByOffsetValue
 
     writers
@@ -98,7 +99,7 @@ class S3WriterManager(formatWriterFn: (TopicPartition, Map[PartitionField, Strin
     writers.values.foreach(_.close())
   }
 
-  def write(topicPartitionOffset: TopicPartitionOffset, messageDetail: MessageDetail): Unit = {
+  def write(topicPartitionOffset: TopicPartitionOffset, messageDetail: MessageDetail): Unit = timed("Write message") {
     logger.debug(s"Received call to S3WriterManager.write")
 
     val newWriter = writer(topicPartitionOffset.toTopicPartition, messageDetail)

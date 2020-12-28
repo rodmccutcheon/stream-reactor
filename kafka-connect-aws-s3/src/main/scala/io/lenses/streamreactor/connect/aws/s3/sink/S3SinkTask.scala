@@ -18,13 +18,13 @@
 package io.lenses.streamreactor.connect.aws.s3.sink
 
 import java.util
-
 import com.datamountaineer.streamreactor.connect.utils.JarManifest
 import io.lenses.streamreactor.connect.aws.s3.auth.AwsContextCreator
 import io.lenses.streamreactor.connect.aws.s3.model._
 import io.lenses.streamreactor.connect.aws.s3.sink.config.S3SinkConfig
 import io.lenses.streamreactor.connect.aws.s3.sink.conversion.{HeaderToStringConverter, ValueToSinkDataConverter}
 import io.lenses.streamreactor.connect.aws.s3.storage.{MultipartBlobStoreStorageInterface, StorageInterface}
+import io.lenses.streamreactor.connect.aws.s3.MetricsSupport
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.{TopicPartition => KafkaTopicPartition}
 import org.apache.kafka.connect.sink.{SinkRecord, SinkTask}
@@ -32,7 +32,7 @@ import org.apache.kafka.connect.sink.{SinkRecord, SinkTask}
 import scala.collection.JavaConverters._
 import scala.util.control.NonFatal
 
-class S3SinkTask extends SinkTask {
+class S3SinkTask extends SinkTask with MetricsSupport{
 
   private val logger = org.slf4j.LoggerFactory.getLogger(getClass.getName)
 
@@ -74,10 +74,8 @@ class S3SinkTask extends SinkTask {
 
   }
 
-  override def put(records: util.Collection[SinkRecord]): Unit = {
-
+  override def put(records: util.Collection[SinkRecord]): Unit = timed(s"Handled ${records.size()} records"){
     logger.debug(s"Received call to S3SinkTask.put with ${records.size()} records")
-
     records.asScala.foreach {
       record =>
         val tpo = TopicPartitionOffset(
@@ -98,7 +96,7 @@ class S3SinkTask extends SinkTask {
     if (records.isEmpty) writerManager.commitAllWritersIfFlushRequired()
   }
 
-  override def preCommit(currentOffsets: util.Map[KafkaTopicPartition, OffsetAndMetadata]): util.Map[KafkaTopicPartition, OffsetAndMetadata] = {
+  override def preCommit(currentOffsets: util.Map[KafkaTopicPartition, OffsetAndMetadata]): util.Map[KafkaTopicPartition, OffsetAndMetadata] = timed("S3 Sink preCommit"){
 
     logger.debug(s"Received call to S3SinkTask.preCommit with current offsets ${currentOffsets.values()}")
 
@@ -123,7 +121,7 @@ class S3SinkTask extends SinkTask {
 
   }
 
-  override def open(partitions: util.Collection[KafkaTopicPartition]): Unit = {
+  override def open(partitions: util.Collection[KafkaTopicPartition]): Unit = timed(s"S3 sink open partitions"){
 
     logger.debug(s"Received call to S3SinkTask.open with ${partitions.size()} partitions")
 
