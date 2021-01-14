@@ -42,6 +42,7 @@ allprojects {
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
     apply plugin: 'com.github.maiflai.scalatest'
+    apply plugin: 'project-report'
 
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
@@ -61,6 +62,8 @@ allprojects {
         gsonVersion = "2.6.2"
         KCQLVersion = "2.8.5"
         connectCLIVersion = "1.0.6"
+        KCQLVersion = "2.8.6"
+        connectCLIVersion = "1.0.9"
         avro4sVersion = "1.6.4"
 
         // The following 4 need to align to compileagainst a particular version
