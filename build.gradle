@@ -24,40 +24,6 @@ plugins {
     id 'net.researchgate.release' version '2.8.1'
 }
 
-release {
-    failOnCommitNeeded = true
-    failOnPublishNeeded = true
-    failOnSnapshotDependencies = true
-    failOnUnversionedFiles = false
-    failOnUpdateNeeded = true
-    revertOnFail = true
-    preCommitText = ''
-    preTagCommitMessage = '[Gradle Release Plugin] - pre tag commit: '
-    tagCommitMessage = '[Gradle Release Plugin] - creating tag: '
-    newVersionCommitMessage = '[Gradle Release Plugin] - new version commit: '
-    tagTemplate = '${version}'
-    versionPropertyFile = 'gradle.properties'
-    versionProperties = []
-    snapshotSuffix = '-SNAPSHOT'
-    buildTasks = ['compile']
-    ignoredSnapshotDependencies = []
-    versionPatterns = [
-        /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
-    ]
-    pushReleaseVersionBranch = false
-    scmAdapters = [
-        net.researchgate.release.GitAdapter
-    ]
-
-    git {
-        requireBranch = 'feat/release-automation'
-        pushToRemote = 'origin'
-        pushToBranchPrefix = ''
-        commitVersionFileOnly = false
-        signTag = false
-    }
-}
-
 // gradle 3.0 intellj fixes
 ScalaCompileOptions.metaClass.daemonServer = true
 ScalaCompileOptions.metaClass.fork = true
@@ -78,10 +44,44 @@ allprojects {
     apply plugin: 'maven-publish'
     apply plugin: 'signing'
     apply plugin: 'com.github.maiflai.scalatest'
+    apply plugin: 'net.researchgate.release'
 
     sourceCompatibility = 1.8
     targetCompatibility = 1.8
 
+    release {
+        failOnCommitNeeded = true
+        failOnPublishNeeded = true
+        failOnSnapshotDependencies = true
+        failOnUnversionedFiles = false
+        failOnUpdateNeeded = true
+        revertOnFail = true
+        preCommitText = ''
+        preTagCommitMessage = '[Gradle Release Plugin] - pre tag commit: '
+        tagCommitMessage = '[Gradle Release Plugin] - creating tag: '
+        newVersionCommitMessage = '[Gradle Release Plugin] - new version commit: '
+        tagTemplate = '${version}'
+        versionPropertyFile = 'gradle.properties'
+        versionProperties = []
+        snapshotSuffix = '-SNAPSHOT'
+        buildTasks = ['compile']
+        ignoredSnapshotDependencies = []
+        versionPatterns = [
+            /(\d+)([^\d]*$)/: { Matcher m, Project p -> m.replaceAll("${(m[0][1] as int) + 1}${m[0][2]}") }
+        ]
+        pushReleaseVersionBranch = false
+        scmAdapters = [
+            net.researchgate.release.GitAdapter
+        ]
+
+        git {
+            requireBranch = 'feat/release-automation'
+            pushToRemote = 'origin'
+            pushToBranchPrefix = ''
+            commitVersionFileOnly = false
+            signTag = false
+        }
+    }
 
     ext {
         scalaMajorVersion = '2.12'
