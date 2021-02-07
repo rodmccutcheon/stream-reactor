@@ -69,10 +69,9 @@ allprojects {
         versionPatterns = [
             /(\d+)\.(\d+)\.(\d+)/: { Matcher m, Project p ->
                 println p.getName()
-                if (p.getName() == 'master') {
-                    m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}.0")
+                if (p.getName() == 'stream-reactor') {
+                    m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}")
                 } else {
-                    throw new GradleException('error occurred')
                     m.replaceAll("${m[0][1]}.${m[0][2]}.${(m[0][3] as int) + 1}")
                 }
             }
