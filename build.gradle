@@ -60,7 +60,7 @@ allprojects {
         preTagCommitMessage = '[Gradle Release Plugin] - pre tag commit: '
         tagCommitMessage = '[Gradle Release Plugin] - creating tag: '
         newVersionCommitMessage = '[Gradle Release Plugin] - new version commit: '
-        tagTemplate = '${version}'
+        tagTemplate = '$name-$version'
         versionPropertyFile = 'gradle.properties'
         versionProperties = []
         snapshotSuffix = '-SNAPSHOT'
@@ -82,7 +82,7 @@ allprojects {
         ]
 
         git {
-            requireBranch = 'feat/release-automation'
+            requireBranch = 'feat/release-automation' // FIXME: master
             pushToRemote = 'origin'
             pushToBranchPrefix = ''
             commitVersionFileOnly = false
