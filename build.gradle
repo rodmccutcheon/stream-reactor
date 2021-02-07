@@ -70,7 +70,7 @@ allprojects {
             /(\d+)\.(\d+)\.(\d+)/: { Matcher m, Project p ->
                 println p.getName()
                 if (p.getName() == 'stream-reactor') {
-                    m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}")
+                    m.replaceAll("${m[0][1]}.${(m[0][2] as int) + 1}.0")
                 } else {
                     m.replaceAll("${m[0][1]}.${m[0][2]}.${(m[0][3] as int) + 1}")
                 }
