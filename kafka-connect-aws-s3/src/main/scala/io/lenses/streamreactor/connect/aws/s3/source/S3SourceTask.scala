@@ -16,17 +16,15 @@
 
 package io.lenses.streamreactor.connect.aws.s3.source
 
-import java.util
-
 import com.datamountaineer.streamreactor.connect.utils.JarManifest
 import io.lenses.streamreactor.connect.aws.s3.auth.AwsContextCreator
 import io.lenses.streamreactor.connect.aws.s3.model._
-import io.lenses.streamreactor.connect.aws.s3.sink.config.S3SinkConfig
 import io.lenses.streamreactor.connect.aws.s3.source.config.S3SourceConfig
 import io.lenses.streamreactor.connect.aws.s3.storage.{MultipartBlobStoreStorageInterface, StorageInterface}
 import org.apache.kafka.connect.data.{Schema, SchemaAndValue}
 import org.apache.kafka.connect.source.{SourceRecord, SourceTask}
 
+import java.util
 import scala.collection.JavaConverters._
 import scala.util.Try
 
@@ -116,9 +114,9 @@ class S3SourceTask extends SourceTask {
       case StringSourceData(result: String, _) =>
         (None, result, None)
       case ByteArraySourceData(resultBytes, _) =>
-        (None, resultBytes.value, resultBytes.key)
+        (None, resultBytes.value, Some(resultBytes.key))
       case _ =>
-        throw new IllegalArgumentException("Why are we here")
+        throw new IllegalArgumentException(s"Unexpected type in convertToSourceRecord, ${sourceData.getClass}")
     }
     if (key.isDefined) {
       new SourceRecord(
