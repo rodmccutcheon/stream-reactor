@@ -88,7 +88,8 @@ class MqttWriter(client: MqttClient, settings: MqttSinkSettings,
 
             val converter = convertersMap.getOrElse(k.getSource, null)
             val value = if (converter == null) {
-              transformed.getBytes()
+              logger.debug("Extracting payload and decoding from base 64")
+              Base64.getDecoder.decode((parse(transformed) \ "payload").extract[String])
             } else {
               val converted_record = converter.convert(mqttTarget, r)
               converted_record.value().asInstanceOf[Array[Byte]]
@@ -101,6 +102,7 @@ class MqttWriter(client: MqttClient, settings: MqttSinkSettings,
                 msg.setPayload(value)
                 msg.setRetained(settings.mqttRetainedMessage);
 
+                logger.debug("Publishing msg: '{}', to topic: {}", value, t)
                 client.publish(t, msg)
 
               }
