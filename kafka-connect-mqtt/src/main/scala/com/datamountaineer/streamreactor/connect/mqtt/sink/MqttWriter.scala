@@ -28,6 +28,8 @@ import org.eclipse.paho.client.mqttv3.{MqttClient, MqttMessage}
 import org.json4s.DefaultFormats
 import org.json4s.native.JsonMethods._
 
+import java.util.Base64
+
 import scala.collection.JavaConverters._
 import scala.util.Try
 
